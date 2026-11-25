@@ -65,6 +65,19 @@ class LlmEnv(unittest.TestCase):
             self.assertEqual(out.returncode, 3, model)
             self.assertIn("model input", out.stderr)
 
+    def test_databricks_gets_its_header_and_no_betas(self):
+        script = f'source "{ROOT / "scripts/llm_env.sh"}" >/dev/null || exit 3'
+        script += '; echo "H=${ANTHROPIC_CUSTOM_HEADERS-<unset>}"; echo "B=${CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS-<unset>}"'
+        for url, header, betas in (
+                ("https://adb-1.azuredatabricks.net/serving-endpoints/anthropic",
+                 "x-databricks-use-coding-agent-mode: true", "1"),
+                ("https://openrouter.ai/api", "<unset>", "<unset>")):
+            env = {k: v for k, v in os.environ.items() if not k.startswith(("ANTHROPIC_", "CLAUDE_CODE_"))}
+            env.update(LLM_BASE_URL=url, LLM_API_KEY="k", MODEL="m")
+            out = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertEqual(values(out), {"H": header, "B": betas}, url)
+
 
 if __name__ == "__main__":
     unittest.main()

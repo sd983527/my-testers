@@ -24,6 +24,11 @@ if [ -n "${LLM_BASE_URL:-}" ]; then
     export "$v=$MODEL"
   done
   export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 API_TIMEOUT_MS="${API_TIMEOUT_MS:-600000}"
+  # Databricks serving endpoints want this header and reject Claude Code's beta fields
+  case "$LLM_BASE_URL" in
+    *databricks*) export ANTHROPIC_CUSTOM_HEADERS="x-databricks-use-coding-agent-mode: true" \
+                         CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 ;;
+  esac
   llm_host=${LLM_BASE_URL#*://}; llm_host=${llm_host%%/*}
   echo "Model $MODEL through ${llm_host##*@}"
 fi
